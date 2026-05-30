@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가성비 냉장고 마스터</title>
+    
+    <script src="https://code.jquery.com/jquery-3.6.4.js"></script> <script src="https://cdn.tailwindcss.com"></script> <script src="https://unpkg.com/lucide@latest"></script> <style>
+        /* 기본 폰트 설정 (Noto Sans KR) */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        
+        /* 커스텀 CSS 클래스 정의 */
+        .flex-center { display: flex; justify-content: center; align-items: center; } /* 중앙 정렬 유틸리티 */
+        .one-true-layout { display: flex; flex-wrap: wrap; min-height: 100vh; } /* 메인 레이아웃 뼈대 */
+        .sidebar { flex: 1 1 250px; background: white; border-right: 1px solid #e2e8f0; } /* 좌측 사이드바 영역 */
+        .content { flex: 4 1 800px; } /* 우측 메인 콘텐츠 영역 */
+
+        /* 포인트 디자인 요소 */
+        .badge-hot { position: absolute; top: -12px; right: 20px; background: #ef4444; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3); }
+        .active-tab { color: #f97316; font-weight: bold; background: #fff7ed; border-radius: 12px; } /* 활성화된 메뉴 스타일 */
+        
+        /* 화면 전환 애니메이션 처리 */
+        .content-view { display: none; }
+        .content-view.active { display: block; animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div id="hero-section" class="min-h-screen bg-[#f97316] flex flex-col justify-center items-center text-white text-center p-6 relative z-50">
+        <i data-lucide="refrigerator" class="w-24 h-24 mb-6 animate-bounce"></i>
+        <h1 class="text-4xl md:text-5xl font-black mb-4">AL-TTEUL APP</h1>
+        <p class="text-lg md:text-xl font-medium mb-10 max-w-lg text-orange-100 leading-relaxed">
+            남은 식재료로 만드는 가성비 레시피부터,<br>
+            똑똑한 소분 보관법과 냉장고 관리까지!<br>
+            당신의 알뜰한 식생활을 지금 시작해보세요.
+        </p>
+        <button id="start-btn" class="bg-white text-[#f97316] text-xl font-bold py-4 px-12 rounded-full shadow-xl hover:bg-orange-50 hover:scale-105 transition-all duration-300">
+            시작하기
+        </button>
+    </div>
+
+    <div id="main-app" style="display: none;">
+        
+        <header class="bg-orange-500 text-white p-8 shadow-lg">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+                <div class="text-center md:text-left">
+                    <h1 class="text-3xl font-black flex items-center justify-center md:justify-start">
+                        <i data-lucide="refrigerator" class="mr-3 w-8 h-8"></i> AL-TTEUL APP
+                    </h1>
+                    <p id="top-recipe-banner" class="text-orange-100 mt-2 font-medium">인기 레시피를 불러오고 있습니다...</p>
+                </div>
+                <div class="hidden md:block bg-white/10 p-4 rounded-2xl border border-white/20">
+                    <p class="text-sm">보관 중인 재료: <span id="ing-count" class="font-bold">0</span>개</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="one-true-layout max-w-7xl mx-auto">
+            
+            <nav class="sidebar p-8 hidden md:block">
+                <h3 class="text-xs font-bold text-gray-400 mb-6 uppercase tracking-widest">Menu</h3>
+                <ul class="space-y-3">
+                    <li><button onclick="showSection('recipe-section')" class="nav-item w-full text-left p-4 active-tab flex items-center transition-all"><i data-lucide="search" class="mr-3 w-5 h-5"></i> 레시피 찾기</button></li>
+                    <li><button onclick="showSection('guide-section')" class="nav-item w-full text-left p-4 text-gray-500 flex items-center hover:bg-gray-50 rounded-xl transition-all"><i data-lucide="book-open" class="mr-3 w-5 h-5"></i> 소분 방법 찾기</button></li>
+                    <li><button onclick="showSection('fridge-section')" class="nav-item w-full text-left p-4 text-gray-500 flex items-center hover:bg-gray-50 rounded-xl transition-all"><i data-lucide="container" class="mr-3 w-5 h-5"></i> 나의 냉장고</button></li>
+                </ul>
+            </nav>
+
+            <main class="content p-6 md:p-12">
+                
+                <section id="recipe-section" class="content-view active">
+                    <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
+                        <h2 class="text-2xl font-bold">카테고리별 레시피</h2>
+                        <div class="flex bg-white p-1.5 rounded-2xl border shadow-inner" id="cat-filters">
+                            <button class="filter-btn px-6 py-2 rounded-xl text-sm bg-orange-500 text-white font-bold" data-cat="all">전체</button>
+                            <button class="filter-btn px-6 py-2 rounded-xl text-sm text-gray-500" data-cat="한식">한식</button>
+                            <button class="filter-btn px-6 py-2 rounded-xl text-sm text-gray-500" data-cat="중식">중식</button>
+                            <button class="filter-btn px-6 py-2 rounded-xl text-sm text-gray-500" data-cat="양식">양식</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8" id="recipe-container"></div>
+                </section>
+
+                <section id="recipe-detail-section" class="content-view">
+                    <button onclick="showSection('recipe-section')" class="flex items-center text-gray-500 hover:text-orange-500 mb-6 transition font-bold">
+                        <i data-lucide="arrow-left" class="mr-2 w-5 h-5"></i> 목록으로 돌아가기
+                    </button>
+                    <div id="recipe-detail-content" class="bg-white p-8 md:p-12 rounded-[3rem] shadow-sm border border-slate-100"></div>
+                </section>
+
+                <section id="guide-section" class="content-view">
+                    <h2 class="text-2xl font-bold mb-8">식재료 손질 및 보관법</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="guide-container"></div>
+                </section>
+
+                <section id="fridge-section" class="content-view">
+                    <h2 class="text-2xl font-bold mb-4">냉장고 채우기</h2>
+                    <div class="bg-white p-8 rounded-3xl border shadow-sm mb-10">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input type="text" id="ing-name" placeholder="재료명 (예 : 대파)" class="p-4 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                            <input type="text" id="ing-amount" placeholder="양 (예 : 2단)" class="p-4 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-orange-500 outline-none">
+                            <button id="add-ing-btn" class="bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition flex-center">
+                                <i data-lucide="plus-circle" class="mr-2"></i> 추가하기
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="fridge-container"></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // 앱 전체 상태를 관리하는 데이터 객체
+        const state =
+        {
+            // 레시피 목록 데이터
+            recipes:
+            [
+                { id: 1, title: "계란 토마토 파스타", cat: "양식", price: "3,000원", hot: false, ing: ["파스타면 100g", "방울토마토 5개", "계란 2개", "마늘 3알"], steps: ["면을 8분간 삶습니다.", "마늘과 토마토를 볶다가 계란을 스크램블 합니다.", "삶은 면을 넣고 면수와 소금으로 간을 맞춰 마무리합니다."] },
+                { id: 2, title: "고추기름 짜장라면", cat: "중식", price: "1,300원", hot: true, ing: ["짜장라면 1개", "고춧가루 1T", "대파 약간", "식용유 2T"], steps: ["대파와 식용유를 볶다 불을 끄고 고춧가루를 섞어 고추기름을 만듭니다.", "면을 삶아 물을 조금 남기고 버립니다.", "고추기름과 소스를 넣고 센 불에 1분간 볶습니다."] },
+                { id: 3, title: "김치볶음밥", cat: "한식", price: "2,000원", hot: false, ing: ["익은 김치 1컵", "밥 1공기", "햄/스팸 약간", "설탕 0.5T"], steps: ["김치와 햄을 잘게 자릅니다.", "팬에 기름을 두르고 김치와 햄을 충분히 볶습니다.", "밥을 넣고 고루 섞으며 볶다가 마지막에 참기름을 두릅니다."] },
+                { id: 4, title: "된장찌개", cat: "한식", price: "4,000원", hot: false, ing: ["된장 2T", "애호박 1/4개", "두부 1/2모"], steps: ["육수가 끓으면 된장을 풉니다.", "단단한 채소를 먼저 넣고 익힙니다.", "두부를 넣고 한소끔 더 끓입니다."] },
+                { id: 5, title: "마파두부 덮밥", cat: "중식", price: "3,500원", hot: false, ing: ["두부 1모", "다진 돼지고기 100g", "두반장 1T"], steps: ["두부를 깍둑썰기 합니다.", "고기를 볶다가 두반장과 물을 넣고 끓입니다.", "두부를 넣고 전분물로 농도를 조절합니다."] },
+                { id: 6, title: "원팬 알리오올리오", cat: "양식", price: "2,500원", hot: true, ing: ["파스타면 100g", "통마늘 5알", "페페론치노 3개", "올리브유"], steps: ["마늘을 편 썰고 기름에 향을 냅니다.", "물 500ml를 넣고 면을 함께 끓입니다.", "물이 졸아들면 소금과 후추로 간을 합니다."] },
+                { id: 7, title: "참치 간장 비빔밥", cat: "한식", price: "1,500원", hot: true, ing: ["참치캔 1개", "밥 1공기", "계란 1개", "간장 1T", "참기름 1T"], steps: ["참치는 기름을 뺍니다.", "계란 프라이를 반숙으로 만듭니다.", "그릇에 밥과 참치를 담고 간장, 참기름을 두릅니다.", "계란을 올리고 비벼 먹습니다."] },
+                { id: 8, title: "초간단 계란국", cat: "한식", price: "1,500원", hot: false, ing: ["물 500ml", "계란 2개", "대파 약간", "국간장 1T", "멸치액젓 0.5T"], steps: ["물에 간장과 액젓으로 간을 하여 끓입니다.", "계란을 풀어 끓는 물에 원을 그리며 붓습니다.", "대파를 넣고 짧게 끓여 마무리합니다."] },
+                { id: 9, title: "파기름 볶음면", cat: "중식", price: "1,200원", hot: true, ing: ["라면사리 1개", "대파 1/2대", "식용유 3T", "간장 2T", "설탕 1T"], steps: ["대파를 잘게 썹니다.", "팬에 식용유와 대파를 넣고 노릇하게 볶아 파기름을 냅니다.", "삶은 면과 양념(간장, 설탕)을 넣고 볶습니다."] },
+                { id: 10, title: "프렌치 토스트", cat: "양식", price: "1,800원", hot: false, ing: ["식빵 2장", "계란 2개", "우유 50ml", "설탕", "버터"], steps: ["계란, 우유, 설탕을 섞어 계란물을 만듭니다.", "식빵을 듬뿍 적신 후 버터 두른 팬에 노릇하게 굽습니다."] },
+                { id: 11, title: "황금 간장 계란밥", cat: "한식", price: "1,000원", hot: true, ing: ["밥 1공기", "계란 2개", "간장 1T", "버터 1조각", "참기름"], steps: ["계란 프라이를 반숙으로 만듭니다.", "뜨거운 밥 위에 버터를 올리고 녹입니다.", "계란을 올린 뒤 간장과 참기름을 넣고 비빕니다."] },
+                { id: 12, title: "횟집 스타일 콘치즈", cat: "양식", price: "2,800원", hot: false, ing: ["옥수수 통조림 1캔", "마요네즈 3T", "설탕 1T", "모짜렐라 치즈"], steps: ["옥수수 물기를 빼고 마요네즈, 설탕과 섞습니다.", "팬에 담고 치즈를 듬뿍 올립니다.", "약불에서 뚜껑을 덮고 치즈가 녹을 때까지 가열합니다."] }
+            ],
+            // 식재료 보관법 데이터
+            guides: [
+                { item: "대파", method: "세척 후 물기를 닦고 용도별로 썰어 지퍼백에 담으세요. 키친타월 한 장을 함께 넣으면 수분을 잡아주어 3~4개월간 신선합니다.", color: "bg-emerald-100 text-emerald-700" },
+                { item: "양파", method: "껍질째는 서늘한 곳에, 깐 양파는 키친타월로 감싸 지퍼백에 밀봉해 냉장하세요. 무름 방지를 위해 개별 랩핑이 좋습니다.", color: "bg-orange-100 text-orange-700" },
+                { item: "마늘", method: "다진 마늘은 지퍼백에 얇게 펴서 칼등으로 바둑판 모양 홈을 내어 냉동하세요. 필요할 때 한 조각씩 떼어 쓰기 편리합니다.", color: "bg-amber-100 text-amber-700" },
+                { item: "고기류", method: "핏물을 닦고 겉면에 올리브유를 발라 랩으로 밀착 밀봉하세요. 수분 증발을 막아 냉동 화상 없이 3~4개월 보관 가능합니다.", color: "bg-red-100 text-red-700" },
+                { item: "식빵/베이글", method: "식빵은 2장씩 겹쳐 랩핑하고, 베이글은 가로로 반을 잘라 단면에 종이호일을 끼워 냉동하세요. 최대 6개월까지 보관됩니다.", color: "bg-yellow-100 text-yellow-700" },
+                { item: "베이컨", method: "종이호일 위에 베이컨을 겹치지 않게 올려 돌돌 말아주세요. 지퍼백에 넣어 냉동하면 한 줄씩 꺼내 쓰기 좋습니다.", color: "bg-rose-100 text-rose-700" },
+                { item: "버터", method: "종이호일을 끼워 일정한 크기로 자른 뒤 밀폐용기에 세워서 냉동하세요. 이 상태로 최대 2년까지 보관하고 바로 사용 가능합니다.", color: "bg-amber-100 text-amber-800" },
+                { item: "두부", method: "남은 두부는 밀폐용기에 담고 잠길 정도의 생수와 소금 한 꼬집을 넣어 냉장하세요. 매일 물을 갈아주면 더 오래 신선합니다.", color: "bg-indigo-100 text-indigo-700" }
+            ],
+            // 나의 냉장고 배열 (사용자가 추가하는 데이터가 담김)
+            fridge: []
+        };
+
+        // 문서가 로드되면 실행
+        $(document).ready(function()
+        {
+            lucide.createIcons(); // 아이콘 렌더링
+
+            // 1. 히어로 섹션 애니메이션 이벤트 (시작하기 버튼)
+            $('#start-btn').on('click', function()
+            {
+                $('#hero-section').fadeOut(300, function()
+                {
+                    $('#main-app').fadeIn(300);
+                    renderRecipes(); // 시작하면 레시피를 그려줌
+                });
+            });
+
+            // 2. 레시피 카드 목록을 HTML로 그리는 함수
+            function renderRecipes(cat = 'all')
+            {
+                const $container = $('#recipe-container').empty();
+                // 카테고리 필터링 적용
+                state.recipes.filter(r => cat === 'all' || r.cat === cat).forEach(r =>
+                {
+                    const $card =
+                    $(`
+                        <div onclick="openRecipeDetail(${r.id})" class="relative bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group">
+                            ${r.hot ? '<div class="badge-hot">BEST</div>' : ''}
+                            <div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-2xl flex-center mb-6 group-hover:rotate-12 transition">
+                                <i data-lucide="chef-hat"></i>
+                            </div>
+                            <span class="text-[11px] font-black text-orange-600 bg-orange-50 px-3 py-1 rounded-lg">${r.cat}</span>
+                            <h4 class="text-xl font-bold mt-3">${r.title}</h4>
+                            <p class="text-gray-400 text-sm mt-4 font-medium italic">예상 비용: ${r.price}</p>
+                        </div>
+                    `);
+                    $container.append($card);
+                });
+                lucide.createIcons(); // 새로 그려진 HTML에 아이콘 다시 렌더링
+            }
+
+            // 3. 레시피 상세 보기 화면을 렌더링하는 함수 (전역 함수로 등록)
+            window.openRecipeDetail = function(id)
+            {
+                const recipe = state.recipes.find(r => r.id === id);
+                if (!recipe) return;
+
+                const $detail = $('#recipe-detail-content').empty();
+                $detail.append(
+                `
+                    <div class="flex flex-col md:flex-row justify-between items-start mb-10 gap-4">
+                        <div>
+                            <span class="text-orange-500 font-bold">${recipe.cat}</span>
+                            <h2 class="text-4xl font-black mt-2">${recipe.title}</h2>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-gray-400 text-sm font-medium">예상 조리 비용</p>
+                            <p class="text-2xl font-bold text-orange-600">${recipe.price}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                        <div class="md:col-span-1">
+                            <h3 class="text-xl font-bold mb-6 flex items-center"><i data-lucide="shopping-basket" class="mr-2"></i> 필요 재료</h3>
+                            <ul class="space-y-3">
+                                ${recipe.ing.map(i => `<li class="p-4 bg-slate-50 rounded-xl text-slate-700 font-medium">✓ ${i}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="md:col-span-2">
+                            <h3 class="text-xl font-bold mb-6 flex items-center"><i data-lucide="cooking-pot" class="mr-2"></i> 조리 순서</h3>
+                            <div class="space-y-6">
+                                ${recipe.steps.map((s, idx) =>
+                                `
+                                    <div class="flex gap-5">
+                                        <span class="flex-shrink-0 w-8 h-8 bg-orange-500 text-white rounded-full flex-center font-bold">${idx + 1}</span>
+                                        <p class="text-lg text-slate-600 leading-relaxed">${s}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `);
+
+                showSection('recipe-detail-section'); // 상세화면 섹션으로 뷰 전환
+                lucide.createIcons();
+            };
+
+            // 4. 레시피 카테고리 필터 버튼 클릭 이벤트
+            $('.filter-btn').on('click', function()
+            {
+                $('.filter-btn').removeClass('bg-orange-500 text-white font-bold').addClass('text-gray-500');
+                $(this).addClass('bg-orange-500 text-white font-bold');
+                renderRecipes($(this).data('cat')); // 선택된 카테고리값으로 다시 그리기
+            });
+
+            // 5. 식재료 소분 가이드 목록을 렌더링하는 함수
+            function renderGuides()
+            {
+                const $container = $('#guide-container').empty();
+                state.guides.forEach(g =>
+                {
+                    $container.append(
+                    `
+                        <div class="flex items-center p-6 ${g.color} rounded-3xl border border-white">
+                            <div class="bg-white/50 p-4 rounded-2xl mr-5"><i data-lucide="${g.icon}"></i></div>
+                            <div>
+                                <h4 class="font-bold text-lg">${g.item} 보관법</h4>
+                                <p class="text-sm opacity-80 mt-1">${g.method}</p>
+                            </div>
+                        </div>
+                    `);
+                });
+                lucide.createIcons();
+            }
+
+            // 6. 냉장고 식재료 목록을 렌더링하는 함수
+            function renderFridge()
+            {
+                const $container = $('#fridge-container').empty();
+                $('#ing-count').text(state.fridge.length); // 상단 헤더의 보유 개수 업데이트
+                
+                state.fridge.forEach((ing, index) =>
+                {
+                    $container.append(
+                    `
+                        <div class="bg-white p-6 rounded-2xl border border-dashed border-slate-200 flex justify-between items-center">
+                            <div><h4 class="font-bold">${ing.name}</h4><p class="text-orange-500 font-bold text-xs">${ing.amount}</p></div>
+                            <button onclick="removeIng(${index})" class="text-slate-300 hover:text-red-500"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `);
+                });
+                lucide.createIcons();
+            }
+
+            // 7. 냉장고 재료 추가 버튼 이벤트
+            $('#add-ing-btn').on('click', function()
+            {
+                const name = $('#ing-name').val();
+                const amount = $('#ing-amount').val();
+                
+                if(name && amount)
+                {
+                    state.fridge.push({ name, amount, date: new Date().toISOString().split('T')[0] });
+                    $('#ing-name, #ing-amount').val(''); // 입력창 초기화
+                    renderFridge(); // 추가된 상태로 다시 그리기
+                }
+            });
+
+            // 초기 실행 로직: 상단 HOT 레시피 배너 텍스트 업데이트 및 기본 화면 렌더링
+            const hotItem = state.recipes.find(r => r.hot);
+            $('#top-recipe-banner').text(`HOT! 🔥 ${hotItem.title} (${hotItem.cat}) 메뉴가 인기입니다.`);
+            renderGuides();
+            renderFridge();
+
+            // 8. 냉장고 재료 삭제 함수 (전역 등록)
+            window.removeIng = function(index)
+            {
+                state.fridge.splice(index, 1); // 배열에서 삭제
+                renderFridge(); // 삭제된 상태로 다시 그리기
+            };
+        });
+
+        // 9. 화면 전환 함수 (사이드바 메뉴 클릭 시 작동)
+        function showSection(id)
+        {
+            $('.content-view').removeClass('active'); // 모든 화면 숨김
+            $(`#${id}`).addClass('active'); // 선택한 화면만 보임
+            
+            // 사이드바 버튼 색상 동기화 로직
+            if(id === 'recipe-section' || id === 'recipe-detail-section')
+            {
+                $('.nav-item').removeClass('active-tab text-orange-500').addClass('text-gray-500');
+                $(`button[onclick="showSection('recipe-section')"]`).addClass('active-tab text-orange-500');
+            } else
+            {
+                $('.nav-item').removeClass('active-tab text-orange-500').addClass('text-gray-500');
+                $(`button[onclick="showSection('${id}')"]`).addClass('active-tab text-orange-500');
+            }
+            window.scrollTo(0,0); // 화면 전환 시 스크롤 맨 위로 이동
+        }
+    </script>
+</body>
+</html>
